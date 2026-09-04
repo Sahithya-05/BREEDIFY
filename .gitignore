@@ -8,12 +8,9 @@ dist/
 build/
 
 # Environment variables & secrets
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*
 *.local
+
 
 # Python cache & virtual environments
 __pycache__/

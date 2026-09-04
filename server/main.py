@@ -690,6 +690,17 @@ def identity_get_record(bpa_tag_id: str):
         raise HTTPException(status_code=404, detail="Animal identity record not found.")
     return result
 
+
+# ============================================================
+# SERVER STARTUP
+# ============================================================
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=port
+    )
