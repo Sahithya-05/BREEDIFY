@@ -77,16 +77,43 @@ BREED_NEIGHBORS = {
     ]
 }
 
+def get_gemini_api_key(api_key=None):
+    if api_key and isinstance(api_key, str) and len(api_key.strip()) >= 15 and api_key.strip() not in ("null", "undefined"):
+        return api_key.strip()
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if key and len(key) >= 15 and key not in ("null", "undefined"):
+        return key
+    # Try reading from .env file
+    env_paths = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),
+        os.path.abspath(".env")
+    ]
+    for p in env_paths:
+        if os.path.isfile(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k = k.strip()
+                            v = v.strip().strip("'\"")
+                            if k == "GEMINI_API_KEY" and len(v) >= 15:
+                                os.environ["GEMINI_API_KEY"] = v
+                                return v
+            except Exception:
+                pass
+    return ""
+
 def call_gemini_vision_api(image_bytes, api_key=None):
     """
-    Calls Google Gemini Vision API (cascading through gemini-3.5-flash, gemini-3.6-flash, gemini-3.5-flash-lite, gemini-2.5-flash)
+    Calls Google Gemini Vision API (cascading through gemini-3.5-flash-lite, gemini-3.6-flash, gemini-flash-latest, gemini-3.7-flash)
     with image bytes for deep multimodal breed classification and accurate visual age estimation.
     """
-    key = api_key or os.environ.get("GEMINI_API_KEY", "")
-    if not key or not isinstance(key, str) or len(key.strip()) < 15 or key.strip() in ("null", "undefined"):
-        key = os.environ.get("GEMINI_API_KEY", "")
-    else:
-        key = key.strip()
+    key = get_gemini_api_key(api_key)
+    if not key:
+        return None
 
     try:
         try:
@@ -158,8 +185,12 @@ def call_gemini_vision_api(image_bytes, api_key=None):
         }
 
         models_to_try = [
-            "gemini-3.5-flash",
-            "gemini-3.6-flash"
+            "gemini-3.5-flash-lite",
+            "gemini-3.6-flash",
+            "gemini-flash-latest",
+            "gemini-3.7-flash",
+            "gemini-3.8-flash",
+            "gemini-3.5-flash"
         ]
         for model in models_to_try:
             try:
@@ -592,11 +623,12 @@ def analyze_image_pipeline(full_body_bytes, face_bytes=None, sex="female", filen
     lng = longitude or 78.4867
     loc_str = location_tag or "Hyderabad, Telangana, India"
 
-    active_key = gemini_api_key or os.environ.get("GEMINI_API_KEY", "")
+    active_key = get_gemini_api_key(gemini_api_key)
 
     return {
         "success": True,
         "predicted_breed_id": predicted_breed_id,
+        "model_used": model_used,
         "confidence": round(confidence, 3),
         "is_buffalo": is_buffalo,
         "key_features": key_features,

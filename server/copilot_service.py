@@ -4,12 +4,39 @@ import urllib.request
 import urllib.error
 import requests
 
+def get_gemini_api_key(api_key: str = None) -> str:
+    if api_key and isinstance(api_key, str) and len(api_key.strip()) >= 15 and api_key.strip() not in ("null", "undefined"):
+        return api_key.strip()
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if key and len(key) >= 15 and key not in ("null", "undefined"):
+        return key
+    # Try reading from .env file
+    env_paths = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),
+        os.path.abspath(".env")
+    ]
+    for p in env_paths:
+        if os.path.isfile(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k = k.strip()
+                            v = v.strip().strip("'\"")
+                            if k == "GEMINI_API_KEY" and len(v) >= 15:
+                                os.environ["GEMINI_API_KEY"] = v
+                                return v
+            except Exception:
+                pass
+    return ""
+
 def call_gemini_copilot(message: str, breed_name: str = "Gir Cow", api_key: str = None) -> str:
-    key = api_key or os.environ.get("GEMINI_API_KEY", "")
-    if not key or not isinstance(key, str) or len(key.strip()) < 15 or key.strip() in ("null", "undefined"):
-        key = os.environ.get("GEMINI_API_KEY", "")
-    else:
-        key = key.strip()
+    key = get_gemini_api_key(api_key)
+    if not key:
+        return None
 
     prompt = (
         f"You are BREEDIFY AI Agent, an expert Indian veterinary doctor and livestock dairy farming specialist from ICAR-NDRI. "
@@ -31,7 +58,7 @@ def call_gemini_copilot(message: str, breed_name: str = "Gir Cow", api_key: str 
         }
     }
 
-    models = ["gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-3.5-flash"]
+    models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest", "gemini-3.7-flash"]
     for model in models:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"

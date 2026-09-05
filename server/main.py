@@ -7,7 +7,27 @@ import uuid
 import sqlite3
 from typing import Optional, List
 
-# Load GEMINI_API_KEY from environment
+# Load environment variables from .env if present
+env_paths = [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),
+    os.path.abspath(".env")
+]
+for p in env_paths:
+    if os.path.isfile(p):
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("'\"")
+                        if k and not os.environ.get(k):
+                            os.environ[k] = v
+        except Exception:
+            pass
+
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 from database import init_db, get_db
@@ -198,8 +218,10 @@ async def create_scan(
         "scan_id": scan_id,
         "animal_id": animalId,
         "species": "Buffalo" if result["is_buffalo"] else "Cattle",
+        "predicted_breed_id": result["predicted_breed_id"],
         "predicted_breed": breed_data,
         "predicted_breed_data": breed_data,
+        "model_used": result.get("model_used", "Gemini Vision Multimodal"),
         "confidence": result["confidence"],
         "is_buffalo": result["is_buffalo"],
         "key_features": result.get("key_features") or [],
